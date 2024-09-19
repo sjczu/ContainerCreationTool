@@ -49,7 +49,7 @@ select_compose(){
     if [ -f "$COMPOSE_PATH/$COMPOSE_FILE" ]; then
         cp "$COMPOSE_PATH/$COMPOSE_FILE" "<your backup directory>/$COMPOSE_FILE"
         FULL_COMPOSE_PATH="$COMPOSE_PATH/$COMPOSE_FILE"
-		sed -i '0/\${image}/s/\${image}/$IMAGE' $FULL_COMPOSE_PATH
+	sed -i "s|<image variable in docker-compose>|$IMAGE|" "$FULL_COMPOSE_PATH"
         echo "Docker Compose file set to $FULL_COMPOSE_PATH."
     else
         echo "ERROR: $COMPOSE_FILE does not exist in $COMPOSE_PATH"
