@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMPOSE_PATH="/app"
+COMPOSE_PATH="<compose directory>"
 
 print_main_menu() {
     clear
@@ -18,7 +18,8 @@ print_main_menu() {
 choose_docker_image() {
     echo "Choosing Docker Image:"
     docker images --format "{{.Repository}}:{{.Tag}}"
-    echo "Enter the Docker image path (e.g., repo/image:tag):"
+    
+	echo "Enter the Docker image path (e.g., repo/image:tag):"
     read -r IMAGE
     export IMAGE
 
@@ -46,8 +47,9 @@ select_compose(){
     read -r COMPOSE_FILE
 
     if [ -f "$COMPOSE_PATH/$COMPOSE_FILE" ]; then
-        cp "$COMPOSE_PATH/$COMPOSE_FILE" "/app/composeBackup/$COMPOSE_FILE"
+        cp "$COMPOSE_PATH/$COMPOSE_FILE" "<your backup directory>/$COMPOSE_FILE"
         FULL_COMPOSE_PATH="$COMPOSE_PATH/$COMPOSE_FILE"
+		sed -i '0/\${image}/s/\${image}/$IMAGE' $FULL_COMPOSE_PATH
         echo "Docker Compose file set to $FULL_COMPOSE_PATH."
     else
         echo "ERROR: $COMPOSE_FILE does not exist in $COMPOSE_PATH"
@@ -152,7 +154,7 @@ show_running_containers() {
 
 
 navigate_directory() {
-    CURRENT_DIR="/app/log"
+    CURRENT_DIR="<your logging dir>"
     while true; do
         clear
         echo "Current Directory: $CURRENT_DIR"
