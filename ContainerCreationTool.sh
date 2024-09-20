@@ -1,6 +1,6 @@
 #!/bin/bash
 
-COMPOSE_PATH="<compose directory>"
+COMPOSE_PATH="/app"
 
 print_main_menu() {
     clear
@@ -14,16 +14,43 @@ print_main_menu() {
     echo "***************************************"
 }
 
-
 choose_docker_image() {
-    echo "Choosing Docker Image:"
-    docker images --format "{{.Repository}}:{{.Tag}}"
-    
-	echo "Enter the Docker image path (e.g., repo/image:tag):"
-    read -r IMAGE
-    export IMAGE
+    while true; do
+        clear
+        echo "Available Docker Images:"
+        echo "-------------------------"
 
-    echo "Docker image set to $IMAGE."
+        docker images --format "{{.Repository}}:{{.Tag}}" > temp_images.txt
+
+        local count=1
+        while IFS= read -r line; do
+            echo "$count: $line"
+            count=$((count + 1))
+        done < temp_images.txt
+
+        echo "0: Go back to Main Menu"
+        echo "-------------------------"
+
+        read -p "Select an image by entering its number: " choice
+
+        if [ "$choice" == "0" ]; then
+            rm temp_images.txt
+            return 0
+        fi
+
+        if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -lt "$count" ]]; then
+
+            selected_image=$(sed -n "${choice}p" temp_images.txt)
+
+            echo "You selected: $selected_image"
+            read -p "Press any key to continue..."
+            rm temp_images.txt
+            return 0
+        else
+            echo "Invalid choice. Try again."
+            read -p "Press any key to continue..."
+        fi
+    done
 }
 
 
@@ -31,28 +58,19 @@ specify_service_name() {
     echo "Specify the service name:"
     read -r SERVICE_NAME
     echo "Service name set to $SERVICE_NAME."
-#    echo "Specify the container name." ONLY FOR TESTING PURPOSES
-#    read -r CONTAINER_NAME ONLY FOR TESTING PURPOSES
 }
 
+select_compose() {
+    navigate_directory "$COMPOSE_PATH"
 
-select_compose(){
-    echo "Listing Docker Compose files in $COMPOSE_PATH:"
+    COMPOSE_FILE="$SELECTED_FILE"
 
-    ls $COMPOSE_PATH | grep "docker-compose" | while read -r file; do
-        echo "$file"
-    done
-
-    echo "Enter the Docker Compose file name:"
-    read -r COMPOSE_FILE
-
-    if [ -f "$COMPOSE_PATH/$COMPOSE_FILE" ]; then
-        cp "$COMPOSE_PATH/$COMPOSE_FILE" "<your backup directory>/$COMPOSE_FILE"
-        FULL_COMPOSE_PATH="$COMPOSE_PATH/$COMPOSE_FILE"
-	sed -i "s|<image variable in docker-compose>|$IMAGE|" "$FULL_COMPOSE_PATH"
-        echo "Docker Compose file set to $FULL_COMPOSE_PATH."
+    if [ -f "$COMPOSE_FILE" ]; then
+        cp "$COMPOSE_FILE" "/app/composeBackup/$(basename "$COMPOSE_FILE")"
+        sed -i "0/\${image}/s/\${image}/$IMAGE/" "$COMPOSE_FILE"
+        echo "Docker Compose file set to $COMPOSE_FILE."
     else
-        echo "ERROR: $COMPOSE_FILE does not exist in $COMPOSE_PATH"
+            echo "ERROR: $(basename "$COMPOSE_FILE") does not exist in $COMPOSE_PATH"
     fi
 }
 
@@ -105,11 +123,10 @@ create_container() {
                 ;;
             5)
                 clear
-                if [ -z "$FULL_COMPOSE_PATH" ] || [ -z "$IMAGE" ] || [ -z "$SERVICE_NAME" ]; then
+                if [ -z "$COMPOSE_FILE" ] || [ -z "$IMAGE" ] || [ -z "$SERVICE_NAME" ]; then
                     echo "Please complete all previous steps before creating the container."
                 else
-                    cmd="docker-compose -f $FULL_COMPOSE_PATH up $FLAGS $SERVICE_NAME"
-#                    cmd="docker create --name nginx $IMAGE" THIS LINE WAS ADDED ONLY FOR TESTING PURPOSES
+                    cmd="docker-compose -f $COMPOSE_FILE up $FLAGS $SERVICE_NAME"
                     echo "Executing command: $cmd"
                     $cmd
                     echo "Container created. Press Enter to return to the Main Menu or 'b' to continue."
@@ -154,7 +171,7 @@ show_running_containers() {
 
 
 navigate_directory() {
-    CURRENT_DIR="<your logging dir>"
+    CURRENT_DIR="$1"
     while true; do
         clear
         echo "Current Directory: $CURRENT_DIR"
@@ -201,7 +218,7 @@ scan_error_logs() {
     while true; do
         clear
 
-        navigate_directory
+        navigate_directory "/app/log"
         LOG_PATH="$SELECTED_FILE"
 
         echo "Scanning app logs for ERROR messages..."
